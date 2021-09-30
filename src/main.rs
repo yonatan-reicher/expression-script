@@ -1,18 +1,15 @@
-use std::collections::hash_map::HashMap;
-use std::rc::Rc;
-
-struct Ident {
-    name: String,
-}
-
-enum Expr {
-    Var(Ident),
-    Func {
-        param: Ident,
-        body: Rc<Expr>,
-    }
-}
+mod parse;
+mod ast;
 
 fn main() {
-    println!("Hello, world!");
+    let code = "galord123 -> guyyyy";
+    match parse::parse(code) {
+        Ok(x) => {
+            println!("Parsing successful!");
+            println!("{:?}", x);
+        },
+        Err(()) => {
+            println!("Failed parsing");
+        },
+    };
 }
