@@ -1,5 +1,6 @@
 mod parse;
 mod ast;
+mod reduce;
 
 fn main() {
     let code = "galord123 -> guyyyy";
