@@ -1,14 +1,13 @@
 use std::rc::Rc;
-use rpds::HashTrieMap;
-use crate::ast::{self, Expr};
+use crate::ast::Expr;
 
 
 pub fn reduce(expr: &Expr) -> Option<Rc<Expr>> {
-    let mut ret = None;
+    let mut ret: Rc<Expr> = reduce1(expr)?;
     loop {
-        match reduce1(expr) {
-            Some(new_expr) => ret = Some(new_expr),
-            None => break ret,
+        match reduce1(ret.as_ref()) {
+            Some(new_expr) => ret = new_expr.clone(),
+            None => break Some(ret),
         }
     }
 }
@@ -63,3 +62,27 @@ pub fn reduce1_or_ret(expr: Rc<Expr>) -> Rc<Expr> {
     reduce(expr.as_ref()).unwrap_or(expr)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::rc::Rc;
+    use crate::ast::*;
+    use crate::ast::Expr::*;
+
+    fn r<T>(v: T) -> Rc<T> { Rc::new(v) }
+
+
+    #[test]
+    fn reduce_application() {
+        let x = Ident { name: "x".into() };
+        let y = Ident { name: "y".into() };
+        let id = Func { param: y.clone(), body: r(Var(y.clone())) };
+        let f = Func { param: x.clone(), body: r(App(r(Var(x.clone())), r(Var(x.clone())))) };
+        let expr = App(r(f.clone()), r(id.clone()));
+        let reduced: Rc<Expr> = reduce(&expr).unwrap();
+        assert_eq!(reduced.as_ref(), &Expr::Func {
+            param: y.clone(),
+            body: r(Var(y.clone())),
+        });
+    }
+}
