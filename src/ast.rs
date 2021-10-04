@@ -12,6 +12,7 @@ pub enum Expr {
     Func {
         param: Ident,
         body: Rc<Expr>,
-    }
+    },
+    App(Rc<Expr>, Rc<Expr>),
 }
 
