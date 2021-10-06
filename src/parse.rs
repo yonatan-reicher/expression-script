@@ -3,10 +3,7 @@ use nom::{
     IResult,
     character::complete::{alphanumeric1, space0, char},
     bytes::complete::tag,
-    combinator::{
-        map,
-        flat_map,
-    },
+    combinator::map,
     multi::many_m_n,
     branch::alt,
     sequence::tuple,

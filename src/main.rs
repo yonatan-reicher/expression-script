@@ -21,7 +21,7 @@ mod repl {
     pub fn repl() -> std::io::Result<()> {
         loop {
             print!("> ");
-            stdout().flush();   //  flush the output nessecery after print!
+            stdout().flush()?;   //  flush the output nessecery after print!
             match read_line(stdin())? {
                 None => panic!(),
                 Some(string) if string.trim() == "q" => break,
