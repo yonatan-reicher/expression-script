@@ -1,6 +1,7 @@
 mod parse;
 mod ast;
 mod reduce;
+mod pretty;
 
 
 mod repl {
@@ -28,8 +29,11 @@ mod repl {
                     match parse::parse(&code) {
                         Ok(x) => {
                             println!("Parsing successful!");
-                            println!("tree: \n{:?}", x);
-                            println!("reduced: \n{:?}", reduce(&x));
+                            println!("tree: \n{}", x);
+                            match reduce(&x) {
+                                Some(x) => println!("reduced: \n{}", x),
+                                None => println!("could not reduce"),
+                            };
                         },
                         Err(()) => {
                             eprintln!("Failed parsing");
