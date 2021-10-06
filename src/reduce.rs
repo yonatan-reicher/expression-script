@@ -49,9 +49,16 @@ pub fn reduce1(expr: &Expr) -> Option<Rc<Expr>> {
                     Some(substitute(body.clone(), &param.name, arg.clone()))
                 },
                 _ => {
-                    let func = reduce(func)?;
-                    let arg = reduce(arg)?;
-                    Some(Rc::new(Expr::App(func, arg)))
+                    let reduced_func = reduce(func.as_ref());
+                    let reduced_arg = reduce(arg.as_ref());
+                    match (reduced_func, reduced_arg) {
+                        (None, None) => None,
+                        (reduced_func, reduced_arg) => {
+                            let func = reduced_func.unwrap_or(func.clone());
+                            let arg = reduced_arg.unwrap_or(arg.clone());
+                            Some(Rc::new(Expr::App(func, arg)))
+                        }
+                    }
                 },
             }
         },
