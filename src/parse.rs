@@ -72,23 +72,41 @@ mod test {
     use super::*;
     use crate::ast::*;
 
-    #[test]
-    fn parse_variable() {
-        let code: &str = "variable";
-        println!("{:?}", parse(code));
-        assert!(matches!(
-            parse(code),
-            Ok(Expr::Var(ref var)) if var.name == "variable"
-        ));
+    /// test that parsing identifier from (name + after) returns correctly
+    fn ident_helper(name: &str, after: &str) {
+        let source = format!("{}{}", name, after);
+        println!("Parsing identifier from '{}'", &source);
+        let (rest, identifier) =
+            ident(&source)
+            .expect("Parsing identifier");
+        assert_eq!(rest, after);
+        assert_eq!(identifier.name, name);
     }
 
     #[test]
-    fn parse_variable_with_underscore() {
-        let code: &str = "my_variable";
-        println!("{:?}", parse(code));
-        assert!(matches!(
-            parse(code),
-            Ok(Expr::Var(ref var)) if var.name == "my_variable"
-        ));
+    fn ident_simple() { ident_helper("variable", ""); }
+    #[test]
+    fn ident_with_underscores() { ident_helper("whats_up", ""); }
+    #[test]
+    fn ident_with_digits() { ident_helper("2good4u", ""); }
+    #[test]
+    fn ident_with_space_afterwards() { ident_helper("my_variable", " "); }
+    #[test]
+    fn ident_with_dash_afterwards() { ident_helper("daniel", "->"); }
+ 
+    fn func_helper(left: &str, middle: &str, right: &str, after: &str) {
+        let source = format!("{}{}{}{}", left, middle, right, after);
+        println!("Parsing function from '{}'", source);
+        let (rest, func) = func(&source).expect("Parse func");
+        assert_eq!(rest, after);
+        match func {
+            Expr::Func { param, body } => {
+                assert_eq!(param.name, left);
+            },
+            _ => panic!("func did not return a function"),
+        }
     }
+
+    #[test]
+    fn func_simple() { func_helper("arg", " -> ", "body with arg", ""); }
 }
