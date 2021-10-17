@@ -8,7 +8,7 @@ impl Display for Ident {
 
 fn is_atom(expr: &Expr) -> bool {
     match expr {
-        Expr::Var(_) => true,
+        Expr::Var(_) | Expr::AnyType => true,
         Expr::Func { .. } | Expr::App(_, _) => false,
     }
 }
@@ -27,8 +27,11 @@ impl Display for Expr {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
             Expr::Var(ident) => ident.fmt(f),
-            Expr::Func { param, body } => {
+            Expr::AnyType => "any".fmt(f),
+            Expr::Func { param, param_type, body } => {
                 param.fmt(f)?;
+                ": ".fmt(f)?;
+                print_as_atom(param_type, f)?;
                 " -> ".fmt(f)?;
                 print_as_expr(body, f)
             },

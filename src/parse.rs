@@ -2,14 +2,14 @@ use std::rc::Rc;
 use nom::{
     IResult,
     character::is_alphanumeric,
-    character::complete::{self, satisfy, space0, char},
+    character::complete::{satisfy, space0, char},
     bytes::complete::tag,
     combinator::map,
     multi::{many_m_n, many1},
     branch::alt,
     sequence::tuple,
 };
-use crate::ast;
+use crate::ast::{self, Expr};
 
 fn ident_char(input: &str) -> IResult<&str, char> {
     satisfy(|c| is_alphanumeric(c as u8) || c == '_') (input)
@@ -24,9 +24,9 @@ fn ident(input: &str) -> IResult<&str, ast::Ident> {
 
 fn func(input: &str) -> IResult<&str, ast::Expr> {
     map(
-        tuple((ident, space0, tag("->"), space0, expr)),
-        |(param, _, _, _, body)|
-            ast::Expr::Func { param, body: Rc::new(body) },
+        tuple((ident, space0, tag(":"), space0, tag("any"), space0, tag("->"), space0, expr)),
+        |(param, _, _, _, _, _, _, _, body)|
+            ast::Expr::Func { param, param_type: Rc::new(Expr::AnyType), body: Rc::new(body) },
     ) (input)
 }
 
@@ -94,19 +94,19 @@ mod test {
     #[test]
     fn ident_with_dash_afterwards() { ident_helper("daniel", "->"); }
  
-    fn func_helper(left: &str, middle: &str, right: &str, after: &str) {
-        let source = format!("{}{}{}{}", left, middle, right, after);
+    fn func_helper(first: &str, second: &str, third: &str, fourth: &str, fifth: &str, after: &str) {
+        let source = format!("{}{}{}{}{}{}", first, second, third, fourth, fifth, after);
         println!("Parsing function from '{}'", source);
         let (rest, func) = func(&source).expect("Parse func");
         assert_eq!(rest, after);
         match func {
-            Expr::Func { param, body } => {
-                assert_eq!(param.name, left);
+            Expr::Func { param, param_type, body } => {
+                assert_eq!(param.name, first);
             },
             _ => panic!("func did not return a function"),
         }
     }
 
     #[test]
-    fn func_simple() { func_helper("arg", " -> ", "body with arg", ""); }
+    fn func_simple() { func_helper("arg", ": ", "any", " -> ", "body with arg", ""); }
 }
