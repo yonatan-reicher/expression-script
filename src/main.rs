@@ -2,6 +2,7 @@ mod parse;
 mod ast;
 mod reduce;
 mod pretty;
+mod r#type;
 
 
 mod repl {
