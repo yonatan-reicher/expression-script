@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::r#type::*;
 use std::fmt::{Display, Formatter, Result};
 
 
@@ -40,6 +41,14 @@ impl Display for Expr {
                 ' '.fmt(f)?;
                 print_as_atom(right, f)
             },
+        }
+    }
+}
+
+impl Display for Type {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            Type::Any => "any".fmt(f),
         }
     }
 }
