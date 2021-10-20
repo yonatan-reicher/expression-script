@@ -7,6 +7,8 @@ pub enum Type {
     Any,
 }
 
+pub type VariableTypes<'a> = HashTrieMap<&'a str, Rc<Type>>;
+
 impl Type {
     pub fn from_expr(expr: &Expr) -> Option<Self> {
         match expr {
@@ -21,7 +23,7 @@ impl Type {
         }
     }
 
-    pub fn of_expr(expr: &Expr, con: &HashTrieMap<&str, Rc<Type>>) -> Option<Self> {
+    pub fn of_expr(expr: &Expr, con: &VariableTypes) -> Option<Self> {
         match expr {
             Expr::Var(var) => con.get(var.name.as_str()).map(Rc::as_ref).cloned(),
             Expr::Func { .. } => Some(Type::Any),
