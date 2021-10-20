@@ -31,6 +31,10 @@ mod repl {
                         Ok(x) => {
                             println!("Parsing successful!");
                             println!("tree: \n{}", x);
+                            match r#type::Type::of_expr(&x, &r#type::VariableTypes::new()) {
+                                Some(t) => println!("type: \n{}", t),
+                                None => println!("Type checker failed"),
+                            }
                             match reduce(&x) {
                                 Some(x) => println!("reduced: \n{}", x),
                                 None => println!("could not reduce"),
