@@ -16,23 +16,6 @@ pub enum Expr {
     App(Rc<Expr>, Rc<Expr>),
     //  Types
     AnyType,
-}
-
-impl Expr {
-    pub fn is_type(&self) -> bool {
-        use Expr::*;
-        match self {
-            AnyType => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_subtype(&self, other: &Self) -> bool {
-        use Expr::*;
-        match (self, other) {
-            (_, AnyType) => true,
-            _ => false,
-        }
-    }
+    FuncType(Rc<Expr>, Rc<Expr>),
 }
 

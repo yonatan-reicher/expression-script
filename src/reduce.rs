@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use crate::ast::Expr;
+use crate::r#type::*;
 
 
 pub fn reduce(expr: &Expr) -> Option<Rc<Expr>> {
@@ -34,6 +35,11 @@ pub fn substitute(expr: Rc<Expr>, name: &str, value: Rc<Expr>) -> Rc<Expr> {
             let right = recurse(right.clone());
             Rc::new(Expr::App(left, right))
         },
+        Expr::FuncType(left, right) => {
+            let left = recurse(left.clone());
+            let right = recurse(right.clone());
+            Rc::new(Expr::FuncType(left, right))
+        }
     }
 }
 
@@ -61,7 +67,7 @@ pub fn reduce1(expr: &Expr) -> Option<Rc<Expr>> {
         },
         Expr::App(func, arg) => {
             match func.as_ref() {
-                Expr::Func { param, param_type, body } if param_type.is_type() => {
+                Expr::Func { param, param_type, body } if Type::from_expr(param_type).is_some() => {
                     Some(substitute(body.clone(), &param.name, arg.clone()))
                 },
                 _ => {
@@ -78,12 +84,23 @@ pub fn reduce1(expr: &Expr) -> Option<Rc<Expr>> {
                 },
             }
         },
+        Expr::FuncType(left, right) => {
+            let reduced_left = reduce1(&left);
+            let reduced_right = reduce1(&right);
+            match (reduced_left, reduced_right) {
+                (None, None) => None,
+                (reduced_left, reduced_right) => {
+                    let left = reduced_left.unwrap_or(left.clone());
+                    let right = reduced_right.unwrap_or(right.clone());
+                    Some(Rc::new(Expr::FuncType(left, right)))
+                }
+            }
+        }
     }
 }
 
-pub fn reduce1_or_ret(expr: Rc<Expr>) -> Rc<Expr> {
-    reduce(expr.as_ref()).unwrap_or(expr)
-}
+
+pub fn reduce_or_ret(expr: Rc<Expr>) -> Rc<Expr> { reduce(expr.as_ref()).unwrap_or(expr) }
 
 #[cfg(test)]
 mod tests {

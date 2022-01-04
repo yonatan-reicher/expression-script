@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use nom::{
     IResult,
+    Parser,
     character::is_alphanumeric,
     character::complete::{satisfy, space0, char},
     bytes::complete::tag,
@@ -24,10 +25,16 @@ fn ident(input: &str) -> IResult<&str, ast::Ident> {
 
 fn func(input: &str) -> IResult<&str, ast::Expr> {
     map(
-        tuple((ident, space0, tag(":"), space0, tag("any"), space0, tag("->"), space0, expr)),
+        tuple((ident, space0, tag(":"), space0, atom, space0, tag("->"), space0, expr)),
         |(param, _, _, _, _, _, _, _, body)|
             ast::Expr::Func { param, param_type: Rc::new(Expr::AnyType), body: Rc::new(body) },
     ) (input)
+}
+
+fn func_type(input: &str) -> IResult<&str, ast::Expr> {
+    atom.and(space0).and(tag("=>")).and(space0).and(atom)
+    .map(|((((l, _), _), _), r)| Expr::FuncType(Rc::new(l), Rc::new(r)))
+    .parse(input)
 }
 
 
@@ -54,13 +61,19 @@ fn atom(input: &str) -> IResult<&str, ast::Expr> {
 fn expr(input: &str) -> IResult<&str, ast::Expr> {
     alt((
         func,
+        func_type,
         app,
         atom,
     )) (input)
 }
 
+fn program(input: &str) -> IResult<&str, ast::Expr> {
+    use nom::character::complete::multispace0;
+    map(tuple((expr, multispace0)), |(x, _)| x)(input)
+}
+
 pub fn parse(input: &str) -> Result<ast::Expr, ()> {
-    match expr(input) {
+    match program(input) {
         Ok(("", ast)) => Ok(ast),
         Ok(_) => Err(()),
         Err(_) => Err(()),

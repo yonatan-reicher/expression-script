@@ -11,6 +11,7 @@ fn is_atom(expr: &Expr) -> bool {
     match expr {
         Expr::Var(_) | Expr::AnyType => true,
         Expr::Func { .. } | Expr::App(_, _) => false,
+        Expr::FuncType(_, _) => false,
     }
 }
 
@@ -41,6 +42,11 @@ impl Display for Expr {
                 ' '.fmt(f)?;
                 print_as_atom(right, f)
             },
+            Expr::FuncType(left, right) => {
+                print_as_atom(left, f)?;
+                " => ".fmt(f)?;
+                print_as_expr(right, f)
+            }
         }
     }
 }
@@ -49,6 +55,12 @@ impl Display for Type {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
             Type::Any => "any".fmt(f),
+            Type::Func(left, right) => {
+                left.fmt(f)?;
+                " -> ".fmt(f)?;
+                right.fmt(f)?;
+                Ok(())
+            },
         }
     }
 }
