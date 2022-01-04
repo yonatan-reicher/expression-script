@@ -1,14 +1,82 @@
+//! Module for walking the AST and reducing it to a minimal value.
+//!
+//! This module contains the `reduce` function which takes an AST and reduces
+//! it to a single value.
+
 use std::rc::Rc;
 use crate::ast::Expr;
 use crate::r#type::*;
 
 
+/// Reduce an AST.
+///
+/// This function takes an AST and reduces it as much as possible.
+/// For example, it will reduce `(x: any -> x) a` to `a`.
+/// Notice: it does not execute the AST - Only reduces it.
+///
+/// If the AST cannot be reduced, None will be returned.
 pub fn reduce(expr: &Expr) -> Option<Rc<Expr>> {
-    let mut ret: Rc<Expr> = reduce1(expr)?;
-    loop {
-        match reduce1(ret.as_ref()) {
-            Some(new_expr) => ret = new_expr.clone(),
-            None => break Some(ret),
+    match expr {
+        Expr::Var(_) => None,
+        Expr::AnyType => None,
+        Expr::Func { param, param_type, body } => {
+            let mut reduced_flag = false;
+
+            //  Reduce the parameter's type
+            let param_type = reduce_with_flag(param_type.clone(), &mut reduced_flag);
+            
+            // Reduce the body
+            let body = reduce_with_flag(body.clone(), &mut reduced_flag);
+
+            // If both weren't reduced, return None
+            if !reduced_flag {
+                return None;
+            }
+
+            // Return the reduced expression
+            Some(Expr::Func {
+                param: param.clone(),
+                param_type: param_type,
+                body,
+            }.into())
+        },
+        Expr::App(func, arg) => {
+            let mut reduced_flag = false;
+
+            // Reduce the function
+            let func = reduce_with_flag(func.clone(), &mut reduced_flag);
+
+            // Reduce the argument
+            let arg = reduce_with_flag(arg.clone(), &mut reduced_flag);
+
+            // try applying the function to the argument
+            match func.as_ref() {
+                Expr::Func { param, param_type, body }
+                if Type::from_expr(param_type).is_some() => {
+                    Some(substitute(body.clone(), &param.name, arg.clone()))
+                },
+                _ => {
+                    // If both weren't reduced, return None
+                    if !reduced_flag {
+                        return None;
+                    }
+
+                    // Return the reduced expression
+                    Some(Expr::App(func, arg).into())
+                },
+            }
+        },
+        Expr::FuncType(left, right) => {
+            let reduced_left = reduce(&left);
+            let reduced_right = reduce(&right);
+            match (reduced_left, reduced_right) {
+                (None, None) => None,
+                (reduced_left, reduced_right) => {
+                    let left = reduced_left.unwrap_or(left.clone());
+                    let right = reduced_right.unwrap_or(right.clone());
+                    Some(Rc::new(Expr::FuncType(left, right)))
+                }
+            }
         }
     }
 }
@@ -43,64 +111,14 @@ pub fn substitute(expr: Rc<Expr>, name: &str, value: Rc<Expr>) -> Rc<Expr> {
     }
 }
 
-pub fn reduce1(expr: &Expr) -> Option<Rc<Expr>> {
-    match expr {
-        Expr::Var(_) => None,
-        Expr::AnyType => None,
-        Expr::Func { param, param_type, body } => {
-            //  Reduce the parameter's type
-            reduce(param_type)
-            .map(|param_type| {
-                let param = param.clone();
-                let body = body.clone();
-                Rc::new(Expr::Func { param_type, param, body })
-            })
-            .or_else(|| {
-                //  Reduce the body
-                reduce(body.as_ref())
-                .map(|body| {
-                    let param = param.clone();
-                    let param_type = param_type.clone();
-                    Rc::new(Expr::Func { param, param_type, body })
-                })
-            })
-        },
-        Expr::App(func, arg) => {
-            match func.as_ref() {
-                Expr::Func { param, param_type, body } if Type::from_expr(param_type).is_some() => {
-                    Some(substitute(body.clone(), &param.name, arg.clone()))
-                },
-                _ => {
-                    let reduced_func = reduce(func.as_ref());
-                    let reduced_arg = reduce(arg.as_ref());
-                    match (reduced_func, reduced_arg) {
-                        (None, None) => None,
-                        (reduced_func, reduced_arg) => {
-                            let func = reduced_func.unwrap_or(func.clone());
-                            let arg = reduced_arg.unwrap_or(arg.clone());
-                            Some(Rc::new(Expr::App(func, arg)))
-                        }
-                    }
-                },
-            }
-        },
-        Expr::FuncType(left, right) => {
-            let reduced_left = reduce1(&left);
-            let reduced_right = reduce1(&right);
-            match (reduced_left, reduced_right) {
-                (None, None) => None,
-                (reduced_left, reduced_right) => {
-                    let left = reduced_left.unwrap_or(left.clone());
-                    let right = reduced_right.unwrap_or(right.clone());
-                    Some(Rc::new(Expr::FuncType(left, right)))
-                }
-            }
-        }
-    }
-}
-
-
 pub fn reduce_or_ret(expr: Rc<Expr>) -> Rc<Expr> { reduce(expr.as_ref()).unwrap_or(expr) }
+
+/// Reduce an AST or return it as is. If was reduced, set the flag to true.
+pub fn reduce_with_flag(expr: Rc<Expr>, reduced_flag: &mut bool) -> Rc<Expr> {
+    let reduced = reduce(expr.as_ref());
+    *reduced_flag |= reduced.is_some();
+    reduced.unwrap_or(expr)
+}
 
 #[cfg(test)]
 mod tests {
