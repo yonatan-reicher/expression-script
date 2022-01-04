@@ -19,3 +19,12 @@ pub enum Expr {
     FuncType(Rc<Expr>, Rc<Expr>),
 }
 
+// Implement conversions to Ident
+impl From<&str> for Ident {
+    fn from(name: &str) -> Self {
+        Ident {
+            name: name.to_string(),
+        }
+    }
+}
+
