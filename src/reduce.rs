@@ -113,17 +113,103 @@ mod tests {
 
 
     #[test]
+    fn cannot_reduce_any_type() {
+        assert_eq!(reduce(&AnyType), None);
+    }
+
+    #[test]
+    fn cannot_reduce_var() {
+        assert_eq!(reduce(&Var("x".into())), None);
+    }
+
+    #[test]
+    fn cannot_reduce_func_type() {
+        assert_eq!(reduce(&FuncType(AnyType.into(), AnyType.into())), None);
+    }
+
+    #[test]
     fn reduce_application() {
-        let x = Ident { name: "x".into() };
-        let y = Ident { name: "y".into() };
-        let id = Func { param: y.clone(), param_type: r(AnyType), body: r(Var(y.clone())) };
-        let f = Func { param: x.clone(), param_type: r(AnyType), body: r(App(r(Var(x.clone())), r(Var(x.clone())))) };
-        let expr = App(r(f.clone()), r(id.clone()));
-        let reduced: Rc<Expr> = reduce(&expr).unwrap();
-        assert_eq!(reduced.as_ref(), &Expr::Func {
-            param: y.clone(),
-            param_type: r(AnyType),
-            body: r(Var(y.clone())),
-        });
+        // (x: any -> x) a ===> a
+        assert_eq!(
+            reduce(&App(
+                Func {
+                    param: "x".into(),
+                    param_type: AnyType.into(),
+                    body: Var("x".into()).into(),
+                }.into(),
+                Var("x".into()).into(),
+            )),
+            Some(Var("x".into()).into())
+        );
+    }
+
+    #[test]
+    fn reduce_nested_application() {
+        // (x: any -> (y: any -> x)) a b ===> a
+        assert_eq!(
+            reduce(&App(
+                App(
+                    Func {
+                        param: "x".into(),
+                        param_type: AnyType.into(),
+                        body: Func {
+                            param: "y".into(),
+                            param_type: AnyType.into(),
+                            body: Var("x".into()).into(),
+                        }.into(),
+                    }.into(),
+                    Var("a".into()).into(),
+                ).into(),
+                Var("b".into()).into(),
+            )),
+            Some(Var("a".into()).into())
+        );
+    }
+
+    #[test]
+    fn reduce_partial_application() {
+        // (x: any -> y: any -> x) a ===> (y: any -> a)
+        assert_eq!(
+            reduce(&App(
+                Func {
+                    param: "x".into(),
+                    param_type: AnyType.into(),
+                    body: Func {
+                        param: "y".into(),
+                        param_type: AnyType.into(),
+                        body: Var("x".into()).into(),
+                    }.into(),
+                }.into(),
+                Var("a".into()).into(),
+            )),
+            Some(Func {
+                param: "y".into(),
+                param_type: AnyType.into(),
+                body: Var("a".into()).into(),
+            }.into())
+        );
+    }
+
+    #[test]
+    fn reduce_nested_application_in_type() {
+        // (x: ((t: any -> any) a) -> x) b ===> b
+        assert_eq!(
+            reduce(&App(
+                Func {
+                    param: "x".into(),
+                    param_type: App(
+                        Func {
+                            param: "t".into(),
+                            param_type: AnyType.into(),
+                            body: AnyType.into(),
+                        }.into(),
+                        Var("a".into()).into(),
+                    ).into(),
+                    body: Var("x".into()).into(),
+                }.into(),
+                Var("b".into()).into(),
+            )),
+            Some(Var("b".into()).into())
+        );
     }
 }
