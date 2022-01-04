@@ -4,6 +4,30 @@ mod reduce;
 mod pretty;
 mod r#type;
 
+use std::io::{self, Read};
+use ast::*;
+
+mod script {
+    use super::*;
+    use std::fs::File;
+
+    pub fn run(mut file: File) -> io::Result<()> {
+        let mut buf = String::new();
+        file.read_to_string(&mut buf)?;
+        dbg!(&buf);
+        match parse::parse(&buf) {
+            Err(e) => {
+                eprintln!("Parsing error: {:?}", e);
+            }
+            Ok(ast) => {
+                let result = reduce::reduce_or_ret(std::rc::Rc::new(ast));
+                println!("{}", result);
+            }
+        }
+        Ok(())
+    }
+}
+
 
 mod repl {
     use std::io::*;
@@ -52,6 +76,19 @@ mod repl {
 }
 
 fn main() -> std::io::Result<()> {
-    repl::repl()?;
+    use clap::{App, Arg};
+    let arg_matches =
+        App::new("Expression Script")
+        .author("Yonatan R. <yony252525@gmail.com>")
+        .about("Run Expression Script programs and repls")
+        .arg(Arg::with_name("INPUT"))
+        .get_matches();
+
+    if let Some(filename) = arg_matches.value_of("INPUT") {
+        let file = std::fs::File::open(filename)?;
+        script::run(file)?;
+    } else {
+        repl::repl()?;
+    }
     Ok(())
 }
